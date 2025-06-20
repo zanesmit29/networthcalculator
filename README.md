@@ -53,10 +53,6 @@ networthcalculator/
 - Contains functions for connecting to the SQLite database.
 - Handles creation of tables, insertion, updates, deletions, and history logging.
 
-### `analytics.py`
-- Provides functions for generating analytics and visualizations.
-- Includes logic for calculating net worth, cash flow, trends, and category breakdowns.
-
 ---
 
 ## How to Use

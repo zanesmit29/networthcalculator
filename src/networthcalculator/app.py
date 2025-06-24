@@ -5,9 +5,25 @@ from datetime import date
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+def ensure_goals_table():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            goal_type TEXT,
+            goal_subcategory TEXT,
+            goal_amount REAL,
+            progress REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
 def main():
     # Ensure the database table is created
     create_table()
+    ensure_goals_table()
     # Set up the Streamlit app configuration
     st.set_page_config(page_title="Net Worth Tracker", page_icon= "📈", layout="wide")
     st.title("🏦 Personal Net Worth Tracker 🏦")

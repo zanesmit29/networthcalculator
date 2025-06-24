@@ -27,25 +27,92 @@ def main():
     page_name = page
     if page_name == "Dashboard":
         dashboard()
-        # Here you would import and call the dashboard function
+        
     elif page_name == "Add Assets":
         add_assets()
-        # Here you would import and call the add assets function
+        
     elif page_name == "Add Liabilities":
         add_liabilities()
-        # Here you would import and call the add liabilities function
+        
     elif  page_name == "Add Cash Flow":
         add_cash_flow()
-        # Here you would import and call the add cash flow function
+        
     elif page_name == "View/Edit Data":
         view_edit_data()
-        # Here you would import and call the view/edit data function
+        
     elif page_name == "Analytics":
         analytics()
-        # Here you would import and call the analytics function
+        
     elif page_name == "Export Data":
         export_data()
-        # Here you would import and call the export data function
+        
+def add_goal(net_worth):
+    
+    with st.expander("Set a New Goal", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            
+            goal_type = st.selectbox(
+                "Select goal type:",
+                ["Asset", "Liability", "Cash Flow", "Net Worth"],
+                key="goal_type"
+            )
+        with col2:
+            
+            if goal_type == "Asset":
+                goal_subcategory = st.selectbox("Select asset subcategory:", ASSET_CATEGORIES, key="goal_asset_subcat")
+            elif goal_type == "Liability":
+                goal_subcategory = st.selectbox("Select liability subcategory:", LIABILITY_CATEGORIES, key="goal_liab_subcat")
+            elif goal_type == "Cash Flow":
+                goal_subcategory = st.selectbox("Select cash flow subcategory:", CASHFLOW_CATEGORIES, key="goal_cashflow_subcat")
+            else:
+                goal_subcategory = "Net Worth"
+        goal_amount = st.number_input("Enter your financial goal (€):", key="goal_amount")
+
+        #Check how many goals are already set
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM goals")
+        num_goals = cursor.fetchone()[0]
+        
+        if st.button("Set Goal"):
+            # Get the current progress towards the goal through the database
+            if num_goals <= 2:  # Allow up to 3 goals
+                if goal_type == "Asset":
+                    cursor.execute("SELECT SUM(value) FROM assets_liabilities WHERE category = 'assets' AND subcategory = ?", (goal_subcategory,))
+                    progress = goal_amount - (cursor.fetchone()[0] or 0.0)
+                elif goal_type == "Liability":
+                    cursor.execute("SELECT SUM(value) FROM assets_liabilities WHERE category = 'liabilities' AND subcategory = ?", (goal_subcategory,))
+                    progress = goal_amount + (cursor.fetchone()[0] or 0.0)
+                elif goal_type == "Cash Flow":
+                    cursor.execute("SELECT SUM(value) FROM assets_liabilities WHERE category = 'cash flow' AND subcategory = ?", (goal_subcategory,))
+                    progress = goal_amount - (cursor.fetchone()[0] or 0.0)
+                else:  # Net Worth
+                    progress = net_worth - goal_amount
+
+                # Here you would implement the logic to save the goal to the database
+                cursor.execute('''
+                    INSERT INTO goals (goal_type, goal_subcategory, goal_amount, progress)
+                    VALUES (?, ?, ?, ?)
+                ''', (goal_type, goal_subcategory, goal_amount, progress))
+                conn.commit()
+                conn.close()
+                st.success("Goal set successfully!")
+                st.rerun()  # Refresh the page to show the new goal
+                
+                return 
+            else:
+                st.error("You can only set up to 3 goals at a time. Please complete or delete an existing goal before setting a new one.")
+                return 
+
+def delete_goal(goal_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+    conn.commit()
+    conn.close()
+    st.success("Goal deleted successfully!")
+    st.rerun()  # Refresh the page to show the updated goals
 
 def dashboard():
     st.header("🪙 Net Worth Dashboard")
@@ -59,7 +126,6 @@ def dashboard():
     total_liabilities = cursor.fetchone()[0] or 0.0
     cursor.execute("SELECT SUM(value) FROM assets_liabilities WHERE category = 'cash flow'")
     total_cash_flow = cursor.fetchone()[0] or 0.0
-    conn.close()
     # Calculate net worth
     net_worth = total_assets - total_liabilities
     # Display the totals
@@ -72,23 +138,34 @@ def dashboard():
         st.metric("Total Cash Flow", f"€{total_cash_flow:,.2f}")
     with col4:
         st.metric("Net Worth", f"€{net_worth:,.2f}")
-    # Implement the dashboard logic here
+    
+    
 
-    # # Custom goals and progress tracking
-    # st.subheader("🎯 Goals and Progress Tracking")
-    # st.write("Set your financial goals and track your progress towards achieving them.")
-    # goal = st.text_input("Enter your financial goal (e.g., Save €10,000 for a vacation):")
-    # progress = st.number_input("Enter your current progress towards the goal (€):", min_value=0.0, step=100.0)
-    # if st.button("Update Goal Progress"):
-    #     if goal and progress >= 0:
-    #         st.success(f"Goal '{goal}' updated with current progress of €{progress:,.2f}.")
-    #     else:
-    #         st.error("Please enter a valid goal and progress amount.")
-    # # Display the goal and progress
+    # Custom goals and progress tracking
+    st.subheader("🎯 Goals and Progress Tracking")
+    st.write("Set your financial goals and track your progress towards achieving them.")
 
+    # Load existing goals from the database and display them
+    cursor.execute("SELECT id, goal_type, goal_subcategory, goal_amount, progress FROM goals")
+    goals = cursor.fetchall()
+    if goals:
+        for goal in goals:
+            rowid, goal_type, goal_subcategory, goal_amount, progress = goal
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.write(f"**Goal:** {goal_amount}")
+            col2.write(f"**Type:** {goal_type}")
+            col3.write(f"**Subcategory:** {goal_subcategory}")
+            col4.write(f"**Amount Needed:** €{progress:,.2f}")
+            if col5.button("🗑️", key=f"delete_goal_{rowid}"):
+                delete_goal(rowid)
+    else:
+        st.info("No goals set yet.")
+    conn.close()
 
+    # Add a new goal
+    add_goal(net_worth)       
 
-
+    # Display the net worth and cash flow over time
     st.subheader("📈 Net Worth and Cash Flow Over Time")
     # Load data from the database
     conn = get_db_connection()
@@ -143,6 +220,7 @@ def dashboard():
     pivot_df['Net Worth'] = pivot_df.get('assets', 0) - pivot_df.get('liabilities', 0)
     pivot_df['Cash Flow'] = pivot_df.get('cash flow', 0) if 'cash flow' in pivot_df else 0
 
+    pivot_df.index = pd.to_datetime(pivot_df.index)
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     # Net Worth on primary y-axis
@@ -449,7 +527,7 @@ def view_edit_data():
 
     conn.close()
 
-    # Implement the view/edit data logic here
+    
 
 def analytics():
     st.header("🔍 Advanced Analytics")
@@ -678,7 +756,7 @@ def export_data():
             file_name='net_worth_data.json',
             mime='application/json'
         )
-    # Implement the export data logic here
+    
 
     
 if __name__ == "__main__":

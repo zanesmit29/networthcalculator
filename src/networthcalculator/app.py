@@ -22,8 +22,8 @@ def ensure_goals_table():
 
 def main():
     # Ensure the database table is created
-    create_table()
     ensure_goals_table()
+    create_table()
     # Set up the Streamlit app configuration
     st.set_page_config(page_title="Net Worth Tracker", page_icon= "📈", layout="wide")
     st.title("🏦 Personal Net Worth Tracker 🏦")

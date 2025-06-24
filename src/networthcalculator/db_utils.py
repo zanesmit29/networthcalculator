@@ -92,5 +92,3 @@ def get_db_connection():
     conn = sqlite3.connect(db_path)
     return conn
 
-# Call this function at the start of your app
-create_table()

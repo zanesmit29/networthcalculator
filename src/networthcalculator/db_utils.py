@@ -42,6 +42,7 @@ def create_table():
     os.makedirs(data_folder, exist_ok=True)
     db_path = os.path.join(data_folder, 'networth.db')
 
+    # Connect to the database (it will be created if it doesn't exist)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''

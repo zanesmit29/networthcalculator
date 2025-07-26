@@ -40,7 +40,7 @@ networthcalculator/
 ├── .gitignore                    # Files and folders to ignore in git
 └── README.md                     # This file
 ```
-
+x
 ---
 
 ## Python Files Explained

@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import date
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+# Ensure the goals table exists
 
 def ensure_goals_table():
     conn = get_db_connection()
